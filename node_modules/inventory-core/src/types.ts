@@ -1,3 +1,5 @@
+import { emptyLowStock, type LowStockState } from './lowstock-types.ts';
+
 export type Status = 'Available' | 'Assigned' | 'InRepair' | 'Retired';
 
 export interface Specs {
@@ -29,6 +31,9 @@ export interface Laptop {
   readonly serialNumber: string;
   readonly purchaseDate: string;
   readonly specs: Specs;
+  readonly warehouse?: string;
+  readonly reserved?: boolean;
+  readonly defective?: boolean;
   readonly status: Status;
   readonly assignments: readonly Assignment[];
   readonly history: readonly ChangeRecord[];
@@ -44,6 +49,7 @@ export interface Account {
 export interface State {
   readonly laptops: Readonly<Record<string, Laptop>>;
   readonly accounts: Readonly<Record<string, Account>>;
+  readonly lowStock: LowStockState;
 }
 
 export interface Actor {
@@ -83,6 +89,6 @@ export interface DomainError {
 
 export type Result<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: DomainError };
 
-export const emptyState = (): State => ({ laptops: {}, accounts: {} });
+export const emptyState = (): State => ({ laptops: {}, accounts: {}, lowStock: emptyLowStock() });
 
 export type LaptopView = Laptop & { readonly currentHolder: string | null };

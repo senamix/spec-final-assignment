@@ -7,12 +7,32 @@ export interface LaptopFields {
   readonly serialNumber: string;
   readonly purchaseDate: string;
   readonly specs: Specs;
+  readonly warehouse?: string;
+  readonly reserved?: boolean;
+  readonly defective?: boolean;
 }
 
 const MAX_TEXT = 100;
 const SPEC_KEYS = ['processor', 'memory', 'storage'] as const;
 
 export const normalizeSerial = (serial: string): string => serial.trim().toLowerCase();
+
+function validateStockFields(input: Record<string, unknown>): Result<Pick<LaptopFields, 'warehouse' | 'reserved' | 'defective'>> {
+  const out: { warehouse?: string; reserved?: boolean; defective?: boolean } = {};
+  const { warehouse } = input;
+  if (warehouse !== undefined && warehouse !== null) {
+    if (typeof warehouse !== 'string') return err('ValidationError', 'warehouse must be text', 'warehouse');
+    if (warehouse.trim().length > MAX_TEXT) return err('ValidationError', `warehouse must be at most ${MAX_TEXT} characters`, 'warehouse');
+    if (warehouse.trim().length > 0) out.warehouse = warehouse.trim();
+  }
+  for (const key of ['reserved', 'defective'] as const) {
+    const value = input[key];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== 'boolean') return err('ValidationError', `${key} must be true or false`, key);
+    out[key] = value;
+  }
+  return ok(out);
+}
 
 export function validateText(field: string, value: unknown, label = field): Result<string> {
   const text = typeof value === 'string' ? value.trim() : '';
@@ -58,12 +78,15 @@ export function validateLaptopInput(input: Record<string, unknown>, now: string)
   if (!purchaseDate.ok) return purchaseDate;
   const specs = validateSpecs(input.specs);
   if (!specs.ok) return specs;
+  const stock = validateStockFields(input);
+  if (!stock.ok) return stock;
   return ok({
     brand: brand.value,
     model: model.value,
     serialNumber: serialNumber.value,
     purchaseDate: purchaseDate.value,
     specs: specs.value,
+    ...stock.value,
   });
 }
 

@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { emptyState, type Result, type State } from 'inventory-core';
+import { emptyLowStock, emptyState, type Result, type State } from 'inventory-core';
 
 export interface Store {
   read(): State;
@@ -11,7 +11,11 @@ export interface Store {
 async function load(file: string): Promise<State> {
   try {
     const parsed = JSON.parse(await readFile(file, 'utf8')) as Partial<State>;
-    return { laptops: parsed.laptops ?? {}, accounts: parsed.accounts ?? {} };
+    return {
+      laptops: parsed.laptops ?? {},
+      accounts: parsed.accounts ?? {},
+      lowStock: { ...emptyLowStock(), ...parsed.lowStock },
+    };
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return emptyState();
     throw e;

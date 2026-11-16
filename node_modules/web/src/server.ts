@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  acknowledgeAlert,
   addLaptop,
   assignLaptop,
   changeStatus,
@@ -12,27 +13,43 @@ import {
   deleteLaptop,
   editLaptop,
   err,
+  evaluate,
   getLaptop,
   hasAccounts,
   listLaptops,
+  lowStockFrequency,
+  ok,
+  queryHistory,
+  recordDelivery,
+  removeThreshold,
   returnLaptop,
+  setAlertConfig,
+  setRecipientSettings,
+  setThreshold,
+  snoozeAlert,
   statusCounts,
+  stockLevels,
   STATUSES,
   toView,
   verifyCredentials,
   type Account,
   type Ctx,
+  type Delivery,
   type DomainError,
   type ErrorCode,
   type Status,
 } from 'inventory-core';
 import { createRateLimiter, createSessionStore, scryptHasher, type RateLimiter } from './auth.ts';
+import { createDefaultNotifier, type Notifier } from './notifier.ts';
 import { createStore, type Store } from './store.ts';
 
 export interface ServerOptions {
   dataFile: string;
   port?: number;
   now?: () => Date;
+  notifier?: Notifier;
+  /** How often stock is re-checked for escalation and snooze expiry. Defaults to 30 seconds. */
+  sweepIntervalMs?: number;
 }
 
 export interface RunningServer {
@@ -231,13 +248,178 @@ const routes: Route[] = [
       return result.ok ? { status: 204 } : errorReply(result.error);
     },
   },
+  ...lowStockRoutes(),
 ];
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function dateParam(query: URLSearchParams, name: string): { value?: string } | DomainError {
+  const raw = query.get(name);
+  if (!raw) return {};
+  return DATE.test(raw) ? { value: raw } : { code: 'ValidationError', message: `${name} must be a date (YYYY-MM-DD)`, field: name };
+}
+
+function dateRange(query: URLSearchParams): { from?: string; to?: string } | DomainError {
+  const from = dateParam(query, 'from');
+  if ('code' in from) return from;
+  const to = dateParam(query, 'to');
+  if ('code' in to) return to;
+  return { from: from.value, to: to.value };
+}
+
+function lowStockRoutes(): Route[] {
+  const base = '/api/low-stock';
+  return [
+    { method: 'GET', pattern: new RegExp(`^${base}/levels$`), handler: (c) => ({ status: 200, body: stockLevels(c.store.read()) }) },
+    {
+      method: 'GET',
+      pattern: new RegExp(`^${base}/thresholds$`),
+      handler: (c) => ({ status: 200, body: c.store.read().lowStock.thresholds }),
+    },
+    {
+      method: 'PUT',
+      pattern: new RegExp(`^${base}/thresholds$`),
+      async handler(c) {
+        const result = await c.store.update((state) => setThreshold(state, c.body ?? {}, c.coreCtx()));
+        return result.ok ? { status: 200, body: result.value.threshold } : errorReply(result.error);
+      },
+    },
+    {
+      method: 'DELETE',
+      pattern: new RegExp(`^${base}/thresholds$`),
+      async handler(c) {
+        const result = await c.store.update((state) =>
+          removeThreshold(state, c.query.get('sku') ?? '', c.query.get('warehouse') || null),
+        );
+        return result.ok ? { status: 204 } : errorReply(result.error);
+      },
+    },
+    {
+      method: 'GET',
+      pattern: new RegExp(`^${base}/settings$`),
+      handler(c) {
+        const { accounts, lowStock } = c.store.read();
+        const managers = Object.values(accounts).map((a) => ({
+          ...publicAccount(a),
+          settings: lowStock.recipients[a.id] ?? null,
+        }));
+        return { status: 200, body: { config: lowStock.config, managers } };
+      },
+    },
+    {
+      method: 'PUT',
+      pattern: new RegExp(`^${base}/settings/(?<id>[^/]+)$`),
+      async handler(c) {
+        const result = await c.store.update((state) => setRecipientSettings(state, c.params.id!, c.body ?? {}));
+        return result.ok ? { status: 200, body: result.value.settings } : errorReply(result.error);
+      },
+    },
+    {
+      method: 'PUT',
+      pattern: new RegExp(`^${base}/config$`),
+      async handler(c) {
+        const result = await c.store.update((state) => setAlertConfig(state, c.body ?? {}));
+        return result.ok ? { status: 200, body: result.value.state.lowStock.config } : errorReply(result.error);
+      },
+    },
+    {
+      method: 'GET',
+      pattern: new RegExp(`^${base}/alerts$`),
+      handler(c) {
+        const open = c.query.get('status') === 'open';
+        const alerts = Object.values(c.store.read().lowStock.alerts)
+          .filter((a) => !open || a.status !== 'resolved')
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        return { status: 200, body: alerts };
+      },
+    },
+    {
+      method: 'GET',
+      pattern: new RegExp(`^${base}/notifications$`),
+      handler(c) {
+        const mine = Object.values(c.store.read().lowStock.alerts)
+          .filter((a) => a.recipients.includes(c.account!.id))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        return { status: 200, body: mine };
+      },
+    },
+    {
+      method: 'POST',
+      pattern: new RegExp(`^${base}/alerts/(?<id>[^/]+)/acknowledge$`),
+      async handler(c) {
+        const result = await c.store.update((state) => acknowledgeAlert(state, c.params.id!, c.coreCtx()));
+        return result.ok ? { status: 200, body: result.value.alert } : errorReply(result.error);
+      },
+    },
+    {
+      method: 'POST',
+      pattern: new RegExp(`^${base}/alerts/(?<id>[^/]+)/snooze$`),
+      async handler(c) {
+        const result = await c.store.update((state) => snoozeAlert(state, c.params.id!, c.body?.minutes, c.coreCtx()));
+        return result.ok ? { status: 200, body: result.value.alert } : errorReply(result.error);
+      },
+    },
+    {
+      method: 'GET',
+      pattern: new RegExp(`^${base}/history$`),
+      handler(c) {
+        const range = dateRange(c.query);
+        if ('code' in range) return errorReply(range);
+        const filter = { sku: c.query.get('sku') || undefined, warehouse: c.query.get('warehouse') || undefined, ...range };
+        return { status: 200, body: queryHistory(c.store.read(), filter) };
+      },
+    },
+    {
+      method: 'GET',
+      pattern: new RegExp(`^${base}/report$`),
+      handler(c) {
+        const range = dateRange(c.query);
+        if ('code' in range) return errorReply(range);
+        return { status: 200, body: lowStockFrequency(c.store.read(), range) };
+      },
+    },
+  ];
+}
 
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
   const now = options.now ?? (() => new Date());
   const store = await createStore(options.dataFile);
   const sessions = createSessionStore();
   const limiter = createRateLimiter({ max: 5, windowMs: 15 * 60 * 1000 });
+  const notifier = options.notifier ?? createDefaultNotifier(`${options.dataFile}.outbox.jsonl`);
+  let origin = '';
+  const pending = new Set<Promise<void>>();
+
+  const dispatch = async (deliveries: readonly Delivery[]): Promise<void> => {
+    const results = await Promise.all(
+      deliveries.map(async (d) => {
+        try {
+          await notifier.send(d, origin);
+          return { id: d.historyId, delivered: true, note: '' };
+        } catch (e) {
+          return { id: d.historyId, delivered: false, note: (e as Error).message.slice(0, 200) };
+        }
+      }),
+    );
+    await store.update((state) =>
+      ok({ state: results.reduce((s, r) => recordDelivery(s, r.id, r.delivered, r.note), state) }),
+    );
+  };
+
+  /** Re-checks stock and raises, escalates or resolves alerts. Evaluation is awaited; external sends run in the background. */
+  const sweep = async (): Promise<void> => {
+    const ctx: Ctx = { actor: { id: 'system', name: 'system' }, now: now().toISOString(), newId: randomUUID };
+    const result = await store.update((state) => {
+      const evaluated = evaluate(state, ctx);
+      const unchanged =
+        evaluated.state.lowStock.history.length === state.lowStock.history.length &&
+        JSON.stringify(evaluated.state.lowStock.alerts) === JSON.stringify(state.lowStock.alerts);
+      return unchanged ? err('NotFound', 'no change') : ok({ state: evaluated.state, deliveries: evaluated.deliveries });
+    });
+    if (!result.ok || result.value.deliveries.length === 0) return;
+    const job = dispatch(result.value.deliveries).finally(() => pending.delete(job));
+    pending.add(job);
+  };
 
   const readBody = (req: IncomingMessage): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -341,6 +523,9 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       },
       limiter,
     });
+    if (method !== 'GET' && reply.status < 400 && !/^\/api\/(login|logout)$/.test(url.pathname)) {
+      await sweep().catch(() => undefined);
+    }
     send(res, reply);
   };
 
@@ -353,12 +538,19 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   });
   await new Promise<void>((resolve) => server.listen(options.port ?? 3000, '127.0.0.1', resolve));
   const { port } = server.address() as AddressInfo;
+  origin = `http://127.0.0.1:${port}`;
+  const timer = setInterval(() => void sweep().catch(() => undefined), options.sweepIntervalMs ?? 30_000);
+  timer.unref();
+  await sweep();
   return {
-    url: `http://127.0.0.1:${port}`,
-    close: () =>
-      new Promise<void>((resolve) => {
+    url: origin,
+    close: async () => {
+      clearInterval(timer);
+      await Promise.allSettled([...pending]);
+      await new Promise<void>((resolve) => {
         server.closeAllConnections();
         server.close(() => resolve());
-      }),
+      });
+    },
   };
 }

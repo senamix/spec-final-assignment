@@ -53,7 +53,7 @@ export function getLaptop(state: State, id: string): Result<LaptopView> {
   return laptop ? ok(toView(laptop)) : notFound(id);
 }
 
-const EDITABLE = ['brand', 'model', 'serialNumber', 'purchaseDate'] as const;
+const EDITABLE = ['brand', 'model', 'serialNumber', 'purchaseDate', 'warehouse', 'reserved', 'defective'] as const;
 
 export function editLaptop(
   state: State,
@@ -70,6 +70,9 @@ export function editLaptop(
     serialNumber: changes.serialNumber ?? current.serialNumber,
     purchaseDate: changes.purchaseDate ?? current.purchaseDate,
     specs: changesSpecs ? { ...current.specs, ...changesSpecs } : current.specs,
+    warehouse: 'warehouse' in changes ? changes.warehouse : current.warehouse,
+    reserved: 'reserved' in changes ? changes.reserved : current.reserved,
+    defective: 'defective' in changes ? changes.defective : current.defective,
   };
   // An unchanged purchase date is not re-checked against today's date, so old laptops stay editable.
   const fields = validateLaptopInput(
@@ -88,6 +91,9 @@ export function editLaptop(
   const laptop: Laptop = {
     ...current,
     ...next,
+    warehouse: next.warehouse,
+    reserved: next.reserved,
+    defective: next.defective,
     history: [...current.history, changeRecord(ctx, 'Edited', `changed ${changed.join(', ')}`)],
   };
   return ok({ state: putLaptop(state, laptop), laptop });

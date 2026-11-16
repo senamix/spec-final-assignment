@@ -1,0 +1,99 @@
+{
+  "laptops": {
+    "ebaa7a6e-91cf-4b20-b9d0-d4a2c088879a": {
+      "id": "ebaa7a6e-91cf-4b20-b9d0-d4a2c088879a",
+      "brand": "Dell",
+      "model": "M01",
+      "serialNumber": "DELL-M01-SM",
+      "purchaseDate": "2026-11-02",
+      "specs": {
+        "processor": "I7",
+        "memory": "16Gb",
+        "storage": "250Gb"
+      },
+      "reserved": false,
+      "defective": false,
+      "status": "Available",
+      "assignments": [],
+      "history": [
+        {
+          "at": "2026-11-16T14:14:41.868Z",
+          "byAccountId": "e4628fc9-8f5a-42e4-b816-4f41725c83f5",
+          "byName": "Manager 03",
+          "action": "Created",
+          "detail": "laptop added"
+        }
+      ]
+    },
+    "eeefc1c4-899a-429b-8314-420dc6a38568": {
+      "id": "eeefc1c4-899a-429b-8314-420dc6a38568",
+      "brand": "Lenovo",
+      "model": "L01",
+      "serialNumber": "LENOVO-L01-SM",
+      "purchaseDate": "2026-11-05",
+      "specs": {
+        "processor": "i5",
+        "memory": "21Gb",
+        "storage": "512Gb"
+      },
+      "reserved": false,
+      "defective": false,
+      "status": "Available",
+      "assignments": [],
+      "history": [
+        {
+          "at": "2026-11-16T14:14:56.523Z",
+          "byAccountId": "e4628fc9-8f5a-42e4-b816-4f41725c83f5",
+          "byName": "Manager 03",
+          "action": "Created",
+          "detail": "laptop added"
+        }
+      ]
+    }
+  },
+  "accounts": {
+    "e4628fc9-8f5a-42e4-b816-4f41725c83f5": {
+      "id": "e4628fc9-8f5a-42e4-b816-4f41725c83f5",
+      "username": "manager 03",
+      "displayName": "Manager 03",
+      "passwordHash": "scrypt$683729472cf73e87cf2c6082d1bda199$587d4e645ca1c677938dbf8a177b97395a85af670d1a4b00d93780676f655930b8573ca7ad1123e75893319382f8cbbf0136d993cd9af8a2f6950e97fa2da599"
+    }
+  },
+  "lowStock": {
+    "thresholds": [
+      {
+        "sku": "dell|m01|i7|16gb|250gb",
+        "warehouse": "Main",
+        "minQty": 4,
+        "reorderTarget": null,
+        "updatedAt": "2026-11-16T14:15:04.518Z",
+        "updatedBy": "Manager 03"
+      }
+    ],
+    "recipients": {},
+    "config": {
+      "escalationMinutes": 240
+    },
+    "alerts": {
+      "8611af7a-7279-4ff8-9dbf-02a4451d8f48": {
+        "id": "8611af7a-7279-4ff8-9dbf-02a4451d8f48",
+        "sku": "dell|m01|i7|16gb|250gb",
+        "skuLabel": "Dell M01 I7 16Gb 250Gb",
+        "warehouse": "Main",
+        "available": 1,
+        "threshold": 4,
+        "suggestedReorder": 7,
+        "status": "sent",
+        "createdAt": "2026-11-16T14:15:04.520Z",
+        "notifiedAt": "2026-11-16T14:15:04.520Z",
+        "acknowledgedAt": null,
+        "acknowledgedBy": null,
+        "snoozedUntil": null,
+        "escalatedAt": null,
+        "resolvedAt": null,
+        "recipients": []
+      }
+    },
+    "history": []
+  }
+}

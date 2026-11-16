@@ -96,6 +96,139 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-managers').addEventListener('click', showManagers);
+document.getElementById('btn-lowstock').addEventListener('click', () => showLowStock());
+
+const when = (iso) => (iso ? new Date(iso).toLocaleString() : '');
+
+function table(headers, rows, empty) {
+  if (rows.length === 0) return h('p', {}, empty);
+  return h('table', {}, h('thead', {}, h('tr', {}, headers.map((t) => h('th', {}, t)))), h('tbody', {}, rows.map((r) => h('tr', {}, r.map((c) => h('td', {}, c))))));
+}
+
+async function showLowStock(notice, historyFilter = {}) {
+  const hp = new URLSearchParams(Object.entries(historyFilter).filter(([, v]) => v));
+  const [levels, alerts, settings, history, report] = await Promise.all([
+    api('GET', '/api/low-stock/levels'),
+    api('GET', '/api/low-stock/alerts?status=open'),
+    api('GET', '/api/low-stock/settings'),
+    api('GET', `/api/low-stock/history?${hp}`),
+    api('GET', `/api/low-stock/report?${new URLSearchParams([hp.get('from') && ['from', hp.get('from')], hp.get('to') && ['to', hp.get('to')]].filter(Boolean))}`),
+  ]);
+  const out = h('div');
+  const run = async (fn, success) => {
+    try {
+      await fn();
+      await showLowStock(success, historyFilter);
+    } catch (error) {
+      out.replaceChildren(message(error.message));
+    }
+  };
+  const nameOf = (id) => settings.managers.find((m) => m.id === id)?.displayName ?? id;
+
+  const alertRows = alerts.map((a) => [
+    a.skuLabel, a.warehouse, `${a.available} / ${a.threshold}`, a.suggestedReorder,
+    a.status + (a.snoozedUntil ? ` (snoozed until ${when(a.snoozedUntil)})` : '') + (a.escalatedAt ? ', escalated' : ''),
+    h('div', { class: 'row' },
+      h('button', { type: 'button', onclick: () => run(() => api('POST', `/api/low-stock/alerts/${a.id}/acknowledge`), 'Alert acknowledged.') }, 'Acknowledge'),
+      h('button', { type: 'button', class: 'secondary', onclick: () => run(() => api('POST', `/api/low-stock/alerts/${a.id}/snooze`, { minutes: 60 }), 'Snoozed for 1 hour.') }, 'Snooze 1h'),
+      h('button', { type: 'button', class: 'secondary', onclick: () => run(() => api('POST', `/api/low-stock/alerts/${a.id}/snooze`, { minutes: 1440 }), 'Snoozed for 1 day.') }, 'Snooze 1d')),
+  ]);
+
+  const levelRows = levels.map((l) => [
+    l.skuLabel, l.warehouse, l.available, l.threshold ?? '—', l.low ? h('span', { class: 'badge' }, 'Low Stock') : '',
+    h('button', { type: 'button', class: 'secondary', onclick: () => {
+      const f = document.getElementById('threshold-form');
+      f.sku.value = l.sku; f.warehouse.value = l.warehouse; f.minQty.value = l.threshold ?? ''; f.minQty.focus();
+    } }, 'Set threshold'),
+  ]);
+
+  const thresholdForm = h('form', {
+    id: 'threshold-form', class: 'inline',
+    onsubmit: (e) => {
+      e.preventDefault();
+      const d = formData(e.target);
+      run(() => api('PUT', '/api/low-stock/thresholds', {
+        sku: d.sku, warehouse: d.scope === 'sku' ? null : d.warehouse, minQty: Number(d.minQty),
+        reorderTarget: d.reorderTarget === '' ? null : Number(d.reorderTarget),
+      }), 'Threshold saved.');
+    },
+  },
+    h('input', { type: 'hidden', name: 'sku' }),
+    field('Warehouse', 'warehouse', { maxlength: 100 }),
+    h('label', {}, 'Applies to', h('select', { name: 'scope' }, h('option', { value: 'warehouse' }, 'This warehouse'), h('option', { value: 'sku' }, 'All warehouses (SKU default)'))),
+    field('Minimum stock', 'minQty', { type: 'number', min: 0, step: 1, required: true }),
+    field('Reorder up to (optional)', 'reorderTarget', { type: 'number', min: 0, step: 1 }),
+    h('button', { type: 'submit' }, 'Save threshold'),
+  );
+
+  const managerForms = settings.managers.map((m) => {
+    const s = m.settings ?? {};
+    const form = h('form', {
+      class: 'inline',
+      onsubmit: (e) => {
+        e.preventDefault();
+        const d = formData(form);
+        run(() => api('PUT', `/api/low-stock/settings/${m.id}`, {
+          designated: d.designated === 'on', email: d.email, slack: d.slack, teams: d.teams, sms: d.sms,
+          secondaryAccountId: d.secondaryAccountId,
+        }), `Alert settings saved for ${m.displayName}.`);
+      },
+    },
+      h('strong', {}, m.displayName),
+      h('label', {}, h('input', { type: 'checkbox', name: 'designated', checked: s.designated === true }), ' Receives alerts'),
+      field('Email', 'email', { type: 'email', value: s.email ?? '' }),
+      field('Slack webhook (optional)', 'slack', { value: s.slack ?? '' }),
+      field('Teams webhook (optional)', 'teams', { value: s.teams ?? '' }),
+      field('SMS number (optional)', 'sms', { value: s.sms ?? '' }),
+      h('label', {}, 'Escalate to', h('select', { name: 'secondaryAccountId' }, h('option', { value: '' }, 'Nobody'),
+        settings.managers.filter((o) => o.id !== m.id).map((o) => h('option', { value: o.id, selected: o.id === s.secondaryAccountId }, o.displayName)))),
+      h('button', { type: 'submit' }, 'Save'),
+    );
+    return form;
+  });
+
+  const configForm = h('form', {
+    class: 'inline',
+    onsubmit: (e) => {
+      e.preventDefault();
+      run(() => api('PUT', '/api/low-stock/config', { escalationMinutes: Number(formData(e.target).escalationMinutes) }), 'Escalation period saved.');
+    },
+  },
+    field('Escalate if not acknowledged within (minutes)', 'escalationMinutes', { type: 'number', min: 1, max: 10080, step: 1, required: true, value: settings.config.escalationMinutes }),
+    h('button', { type: 'submit' }, 'Save'));
+
+  const filterForm = h('form', {
+    class: 'inline',
+    onsubmit: (e) => { e.preventDefault(); showLowStock(undefined, formData(e.target)); },
+  },
+    field('SKU', 'sku', { value: historyFilter.sku ?? '' }),
+    field('Warehouse', 'warehouse', { value: historyFilter.warehouse ?? '' }),
+    field('From', 'from', { type: 'date', value: historyFilter.from ?? '' }),
+    field('To', 'to', { type: 'date', value: historyFilter.to ?? '' }),
+    h('button', { type: 'submit' }, 'Filter'));
+
+  show(
+    h('h2', {}, 'Low stock'),
+    notice && message(notice, 'notice'),
+    out,
+    h('div', { class: 'row' }, h('button', { type: 'button', class: 'secondary', onclick: () => showLaptops() }, 'Back to laptops')),
+    h('h3', {}, 'Open alerts'),
+    table(['SKU', 'Warehouse', 'Available / threshold', 'Suggested reorder', 'Status', ''], alertRows, 'No open alerts.'),
+    h('h3', {}, 'Stock levels and thresholds'),
+    table(['SKU', 'Warehouse', 'Available', 'Threshold', '', ''], levelRows, 'No laptops yet.'),
+    thresholdForm,
+    h('h3', {}, 'Alert recipients'),
+    configForm,
+    managerForms,
+    h('h3', {}, 'Alert history'),
+    filterForm,
+    table(['Time', 'SKU', 'Warehouse', 'Recipient', 'Channel', 'Status', 'Delivery'],
+      history.slice(0, 200).map((e) => [when(e.at), e.skuLabel, e.warehouse, nameOf(e.recipientId), e.channel, e.status, e.delivery + (e.note ? ` (${e.note})` : '')]),
+      'No alerts match.'),
+    h('h3', {}, 'Low-stock frequency'),
+    table(['SKU', 'Low-stock events'], report.map((r) => [r.skuLabel, r.count]), 'No low-stock events in this range.'),
+  );
+}
 
 function showManagers() {
   const out = h('div');
@@ -145,6 +278,7 @@ function laptopForm({ title, submitLabel, values = {}, onSubmit, onCancel }) {
           await onSubmit({
             brand: d.brand, model: d.model, serialNumber: d.serialNumber, purchaseDate: d.purchaseDate,
             specs: { processor: d.processor, memory: d.memory, storage: d.storage },
+            warehouse: d.warehouse, reserved: d.reserved === 'on', defective: d.defective === 'on',
           });
         } catch (error) {
           out.replaceChildren(message(error.message));
@@ -156,6 +290,9 @@ function laptopForm({ title, submitLabel, values = {}, onSubmit, onCancel }) {
       const value = values[name] ?? values.specs?.[name] ?? '';
       return field(label, name, { ...attrs, value });
     }),
+    field('Warehouse (default: Main)', 'warehouse', { maxlength: 100, value: values.warehouse ?? '' }),
+    h('label', {}, h('input', { type: 'checkbox', name: 'reserved', checked: values.reserved === true }), ' Reserved'),
+    h('label', {}, h('input', { type: 'checkbox', name: 'defective', checked: values.defective === true }), ' Defective'),
     h('div', { class: 'row' }, h('button', { type: 'submit' }, submitLabel), onCancel && h('button', { type: 'button', class: 'secondary', onclick: onCancel }, 'Cancel')),
     out,
   );

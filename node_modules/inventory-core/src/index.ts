@@ -7,3 +7,21 @@ export { addLaptop, changeStatus, deleteLaptop, editLaptop, getLaptop, toView } 
 export { assignLaptop, returnLaptop } from './assignments.ts';
 export { listLaptops, statusCounts, STATUSES } from './query.ts';
 export type { LaptopQuery, StatusCounts } from './query.ts';
+export * from './lowstock-types.ts';
+export {
+  acknowledgeAlert,
+  availableQuantity,
+  evaluate,
+  lowStockFrequency,
+  queryHistory,
+  recordDelivery,
+  removeThreshold,
+  setAlertConfig,
+  setRecipientSettings,
+  setThreshold,
+  skuKey,
+  skuLabel,
+  snoozeAlert,
+  stockLevels,
+} from './lowstock.ts';
+export type { FrequencyRow, HistoryFilter, StockLevel } from './lowstock.ts';

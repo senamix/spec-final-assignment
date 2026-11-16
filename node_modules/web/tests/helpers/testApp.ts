@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Notifier } from '../../src/notifier.ts';
 import { startServer } from '../../src/server.ts';
 
 export interface Reply {
@@ -24,10 +25,10 @@ export interface TestApp {
 
 const cookieFrom = (headers: Headers): string => (headers.get('set-cookie') ?? '').split(';')[0] ?? '';
 
-export async function startTestApp(options: { dataFile?: string; now?: () => Date } = {}): Promise<TestApp> {
+export async function startTestApp(options: { dataFile?: string; now?: () => Date; notifier?: Notifier; sweepIntervalMs?: number } = {}): Promise<TestApp> {
   const dir = options.dataFile ? undefined : mkdtempSync(join(tmpdir(), 'inv-web-'));
   const dataFile = options.dataFile ?? join(dir!, 'data.json');
-  let server = await startServer({ dataFile, port: 0, now: options.now });
+  let server = await startServer({ dataFile, port: 0, now: options.now, notifier: options.notifier, sweepIntervalMs: options.sweepIntervalMs ?? 3_600_000 });
 
   const app: TestApp = {
     url: server.url,
@@ -62,7 +63,7 @@ export async function startTestApp(options: { dataFile?: string; now?: () => Dat
     },
     async restart() {
       await server.close();
-      server = await startServer({ dataFile, port: 0, now: options.now });
+      server = await startServer({ dataFile, port: 0, now: options.now, notifier: options.notifier, sweepIntervalMs: options.sweepIntervalMs ?? 3_600_000 });
       app.url = server.url;
       app.cookie = '';
     },
