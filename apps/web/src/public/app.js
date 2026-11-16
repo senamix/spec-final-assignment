@@ -1,6 +1,34 @@
 const app = document.getElementById('app');
 const nav = document.getElementById('nav');
 const who = document.getElementById('who');
+const lowAlert = document.getElementById('low-alert');
+const ALERT_REFRESH_MS = 5000;
+let alertTimer;
+
+async function refreshAlert() {
+  try {
+    const res = await fetch('/api/low-inventory-alert');
+    if (!res.ok) throw new Error('not signed in');
+    const a = await res.json();
+    lowAlert.hidden = !a.low;
+    lowAlert.textContent = a.low
+      ? `Low inventory: ${a.available} of ${a.total} laptops Available (alert threshold: ${a.threshold}).`
+      : '';
+  } catch {
+    lowAlert.hidden = true;
+  }
+}
+
+function startAlertRefresh() {
+  stopAlertRefresh();
+  refreshAlert();
+  alertTimer = setInterval(refreshAlert, ALERT_REFRESH_MS);
+}
+
+function stopAlertRefresh() {
+  clearInterval(alertTimer);
+  lowAlert.hidden = true;
+}
 
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
@@ -67,6 +95,7 @@ function authForm({ title, button, onSubmit, withName }) {
 
 async function start() {
   nav.hidden = true;
+  stopAlertRefresh();
   const { needsSetup } = await api('GET', '/api/setup');
   if (needsSetup) {
     show(
@@ -87,6 +116,7 @@ async function home() {
   const me = await api('GET', '/api/me');
   who.textContent = `Signed in as ${me.displayName}`;
   nav.hidden = false;
+  startAlertRefresh();
   await showLaptops();
 }
 
@@ -96,6 +126,35 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-managers').addEventListener('click', showManagers);
+document.getElementById('btn-settings').addEventListener('click', showSettings);
+
+async function showSettings() {
+  const { lowInventoryThreshold } = await api('GET', '/api/settings');
+  const out = h('div');
+  const form = h(
+    'form',
+    {
+      onsubmit: async (e) => {
+        e.preventDefault();
+        try {
+          const saved = await api('PUT', '/api/settings', { lowInventoryThreshold: Number(formData(form).lowInventoryThreshold) });
+          out.replaceChildren(message(`Saved. The alert now shows when ${saved.lowInventoryThreshold} or fewer laptops are Available.`, 'notice'));
+          await refreshAlert();
+        } catch (error) {
+          out.replaceChildren(message(error.message));
+        }
+      },
+    },
+    h('h2', {}, 'Settings'),
+    h('p', {}, 'Every signed-in manager sees a low-inventory alert when the number of Available laptops is at or below this number.'),
+    field('Low-inventory threshold (whole number, 0 to 10000)', 'lowInventoryThreshold', {
+      type: 'number', min: 0, max: 10000, step: 1, required: true, value: lowInventoryThreshold,
+    }),
+    h('div', { class: 'row' }, h('button', { type: 'submit' }, 'Save'), h('button', { type: 'button', class: 'secondary', onclick: showLaptops }, 'Back to laptops')),
+    out,
+  );
+  show(form);
+}
 
 function showManagers() {
   const out = h('div');
@@ -163,6 +222,7 @@ function laptopForm({ title, submitLabel, values = {}, onSubmit, onCancel }) {
 }
 
 async function showLaptops(filters) {
+  refreshAlert();
   const f = { q: filters?.q ?? '', status: filters?.status ?? '' };
   const params = new URLSearchParams();
   if (f.q) params.set('q', f.q);
@@ -310,6 +370,7 @@ function detailActions(l) {
 }
 
 async function showDetails(id, notice) {
+  refreshAlert();
   const l = await api('GET', `/api/laptops/${id}`);
   show(
     h('button', { type: 'button', class: 'secondary', onclick: showLaptops }, 'Back to list'),

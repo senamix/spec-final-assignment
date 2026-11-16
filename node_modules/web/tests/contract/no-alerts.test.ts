@@ -13,8 +13,13 @@ beforeEach(async () => {
 });
 afterEach(async () => { await app.stop(); });
 
-describe('no alerting or notification capability (FR-016, SC-007)', () => {
-  it.each(['alerts', 'notifications', 'notify', 'subscriptions', 'webhooks', 'email', 'reminders'])(
+describe('only the low-inventory alert exists (FR-016, FR-025, SC-007)', () => {
+  it('exposes the low-inventory alert to signed-in managers only', async () => {
+    expect((await app.request('GET', '/api/low-inventory-alert')).status).toBe(200);
+    expect((await app.request('GET', '/api/low-inventory-alert', undefined, null)).status).toBe(401);
+  });
+
+  it.each(['alerts', 'notifications', 'notify', 'subscriptions', 'webhooks', 'email', 'reminders', 'warranty-alerts'])(
     'has no /api/%s route',
     async (name) => {
       for (const method of ['GET', 'POST']) {

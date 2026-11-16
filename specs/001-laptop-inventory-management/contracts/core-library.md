@@ -21,9 +21,12 @@ Types are described in [data-model.md](../data-model.md).
 | `createAccount(state, input, hasher, ctx)` | username, displayName, password | `{ state, account }` | `ValidationError`, `DuplicateUsername` | FR-021 |
 | `verifyCredentials(state, username, password, hasher)` | credentials | `Account` | `InvalidCredentials` | FR-018 |
 | `hasAccounts(state)` | none | boolean | none | FR-021 |
+| `setLowInventoryThreshold(state, value)` | whole number, 0 to 10,000 | `{ state, threshold }` | `ValidationError` (field `lowInventoryThreshold`) | FR-024 |
+| `lowInventoryAlert(state)` | none | `{ low, available, threshold, total }`; `low` is true when `total > 0` and `available <= threshold` | none | FR-022 |
 
 Guarantees:
 - Input state is never modified. A failed call returns the error and the caller keeps its state.
 - `listLaptops` and `statusCounts` never include data from other laptops, and the counts always sum
   to `total` (SC-005).
-- The library contains no notification or alert functionality (FR-016).
+- The library contains no notification code other than the pure low-inventory calculation. It never
+  sends anything; showing the alert is the caller's job (FR-016, FR-025).

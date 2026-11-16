@@ -169,6 +169,29 @@
 
 ---
 
+## Phase 9: User Story 6 - Low-inventory alert (Priority: P2)
+
+**Goal**: signed-in managers see an in-app alert when Available laptops are at or below a configurable threshold (added by the 2026-11-16 change request; it supersedes the original no-alerts rule for this one alert).
+
+**Independent Test**: with the default threshold of 3 and 4 Available laptops there is no alert; assigning one raises it; returning it clears it; changing the threshold moves it.
+
+### Tests first
+
+- [x] T060 [P] [US6] Write unit tests for `setLowInventoryThreshold` and `lowInventoryAlert` in `packages/inventory-core/tests/unit/low-inventory.test.ts`: default 3; "Whole number from 0 to 10,000"; alert at or below the threshold; no alert when the inventory is empty; threshold 0; only `Available` laptops count; input state never modified
+- [x] T061 [P] [US6] Write HTTP contract tests for `GET /api/low-inventory-alert`, `GET /api/settings` and `PUT /api/settings` (200, 400, 401) in `apps/web/tests/contract/low-inventory.test.ts`
+- [x] T062 [P] [US6] Write an integration test of the US6 scenarios, including persistence of the threshold across a restart and loading a data file saved before settings existed, in `apps/web/tests/integration/us6-low-inventory.test.ts`
+- [x] T063 [US6] Update `apps/web/tests/contract/no-alerts.test.ts` so that the low-inventory alert is the only permitted alert: other alert routes, notification dependencies and outbound-messaging code must still not exist
+
+### Implementation
+
+- [x] T064 [US6] Add `settings` to `State` and `emptyState()` in `packages/inventory-core/src/types.ts` and implement `setLowInventoryThreshold` and `lowInventoryAlert` in `packages/inventory-core/src/settings.ts`; export them from `packages/inventory-core/src/index.ts`
+- [x] T065 [US6] Default missing `settings` when loading older data files in `apps/web/src/store.ts`
+- [x] T066 [US6] Add the three routes in `apps/web/src/server.ts`
+- [x] T067 [US6] Add the alert banner (refreshed every 5 seconds and after every action) and a Settings screen for the threshold in `apps/web/src/public/app.js`, `index.html` and `styles.css`
+- [x] T068 [US6] Run the full suite, typecheck, and walk through quickstart steps 10 and 11 in the browser
+
+---
+
 ## Dependencies and Execution Order
 
 - **Phase 1** has no dependencies. **Phase 2** depends on Phase 1 and blocks every user story.

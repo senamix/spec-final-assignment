@@ -1,0 +1,67 @@
+{
+  "laptops": {
+    "1d695ec8-c49b-4b31-90e9-ac72d77ce232": {
+      "id": "1d695ec8-c49b-4b31-90e9-ac72d77ce232",
+      "brand": "Dell",
+      "model": "M01",
+      "serialNumber": "DELL-M01-SM",
+      "purchaseDate": "2026-11-09",
+      "specs": {
+        "processor": "I7",
+        "memory": "16Gb",
+        "storage": "250Gb"
+      },
+      "status": "Available",
+      "assignments": [],
+      "history": [
+        {
+          "at": "2026-11-16T13:29:54.047Z",
+          "byAccountId": "a9fc30ac-de2d-46d2-9979-562dd1278985",
+          "byName": "Admin",
+          "action": "Created",
+          "detail": "laptop added"
+        }
+      ]
+    },
+    "abf408bc-ab98-4c61-b208-a27db224ab3c": {
+      "id": "abf408bc-ab98-4c61-b208-a27db224ab3c",
+      "brand": "Lenovo",
+      "model": "L01",
+      "serialNumber": "LENOVO-L01-SM",
+      "purchaseDate": "2026-11-07",
+      "specs": {
+        "processor": "i5",
+        "memory": "21Gb",
+        "storage": "512Gb"
+      },
+      "status": "Available",
+      "assignments": [],
+      "history": [
+        {
+          "at": "2026-11-16T13:30:57.136Z",
+          "byAccountId": "a9fc30ac-de2d-46d2-9979-562dd1278985",
+          "byName": "Admin",
+          "action": "Created",
+          "detail": "laptop added"
+        }
+      ]
+    }
+  },
+  "accounts": {
+    "a9fc30ac-de2d-46d2-9979-562dd1278985": {
+      "id": "a9fc30ac-de2d-46d2-9979-562dd1278985",
+      "username": "admin1",
+      "displayName": "Admin",
+      "passwordHash": "scrypt$3b815a094921431ca2285e3df7caeb4e$c7d176f77c16fb706bcb1a5a1a3a34b9aee19293b9c237dc9288e47af0e94616949abe487dd3b3bcb9718baedd7a9ce1f4ba2be48841f4888e73823cc02f940b"
+    },
+    "a53eb6a8-ee89-4981-9f73-b25a0ce333a0": {
+      "id": "a53eb6a8-ee89-4981-9f73-b25a0ce333a0",
+      "username": "IManager01",
+      "displayName": "Inventory Manager 01",
+      "passwordHash": "scrypt$811c4e34aeb98865fca415a43431b7d0$69b05010855b81cbc90929ff86bef5a800dc7946043f1d8ba10215187b2c824fb66583188c883bbd815dbcacd3cf3ca6c36795a86dc05ae5d023286c18511993"
+    }
+  },
+  "settings": {
+    "lowInventoryThreshold": 3
+  }
+}

@@ -43,7 +43,8 @@ Open `http://localhost:3000`, then check each step:
 7. **Search** by brand and filter by status; the summary counts add up to the total (US4).
 8. **Accounts**: create a second manager, sign in as them, edit a laptop and confirm the change history names them (US5).
 9. **Signed out**: after signing out, `GET /api/laptops` returns 401 (FR-018).
-10. **No alerts**: no notification feature or screen exists (FR-016, SC-007).
+10. **Low-inventory alert**: with the default threshold of 3, add 4 laptops (no banner), assign one (the banner appears stating 3 Available and a threshold of 3), return it (the banner disappears within 5 seconds), then change the threshold in Settings and watch the banner follow (US6).
+11. **No other alerts**: no email, push or other notification exists; the banner is the only alert (FR-016, SC-007).
 
 ## 4. Persistence check
 

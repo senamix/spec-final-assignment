@@ -7,3 +7,5 @@ export { addLaptop, changeStatus, deleteLaptop, editLaptop, getLaptop, toView } 
 export { assignLaptop, returnLaptop } from './assignments.ts';
 export { listLaptops, statusCounts, STATUSES } from './query.ts';
 export type { LaptopQuery, StatusCounts } from './query.ts';
+export { lowInventoryAlert, setLowInventoryThreshold } from './settings.ts';
+export type { LowInventoryAlert } from './settings.ts';

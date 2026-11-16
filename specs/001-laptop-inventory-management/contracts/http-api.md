@@ -46,8 +46,12 @@ hash is never returned by any endpoint.
 | `POST /api/laptops/{id}/return` | none | 200 `Laptop` | FR-010 |
 | `DELETE /api/laptops/{id}` | none | 204 | FR-012 |
 | `GET /api/summary` | none | `{ Available, Assigned, InRepair, Retired, total }` | FR-014 |
+| `GET /api/low-inventory-alert` | none | `{ low, available, threshold, total }` | FR-022, FR-023 |
+| `GET /api/settings` | none | `{ lowInventoryThreshold }` | FR-024 |
+| `PUT /api/settings` | `{ lowInventoryThreshold }` | 200 `{ lowInventoryThreshold }`; 400 naming the field if not a whole number from 0 to 10,000 | FR-024 |
 
 ## Negative contract
 
-No route, payload field or response may relate to alerts or notifications (FR-016). A contract
-test requests common notification-style paths and expects 404.
+The only alert-related route is `GET /api/low-inventory-alert`, which returns data for the page to
+show in the application. No other alert or notification route, payload field or outbound message
+may exist (FR-016, FR-025). A contract test requests common notification-style paths and expects 404.

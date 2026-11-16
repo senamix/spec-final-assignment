@@ -41,9 +41,16 @@ export interface Account {
   readonly passwordHash: string;
 }
 
+export interface Settings {
+  readonly lowInventoryThreshold: number;
+}
+
+export const DEFAULT_LOW_INVENTORY_THRESHOLD = 3;
+
 export interface State {
   readonly laptops: Readonly<Record<string, Laptop>>;
   readonly accounts: Readonly<Record<string, Account>>;
+  readonly settings: Settings;
 }
 
 export interface Actor {
@@ -83,6 +90,10 @@ export interface DomainError {
 
 export type Result<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: DomainError };
 
-export const emptyState = (): State => ({ laptops: {}, accounts: {} });
+export const emptyState = (): State => ({
+  laptops: {},
+  accounts: {},
+  settings: { lowInventoryThreshold: DEFAULT_LOW_INVENTORY_THRESHOLD },
+});
 
 export type LaptopView = Laptop & { readonly currentHolder: string | null };

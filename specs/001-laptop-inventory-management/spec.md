@@ -18,6 +18,11 @@
 - Q: How do manager accounts get created? → A: An existing manager adds new accounts; the first account is created once during initial setup. No self-registration.
 - Q: When a laptop is deleted, is it erased or hidden? → A: Permanently erased, together with its change history.
 
+### Session 2026-11-16
+
+- Change request: "send an alert to the manager when inventory is low". This supersedes the original exclusion of alerts (former FR-016 and SC-007) for this one alert only. All other alerts and notifications remain excluded.
+- Defaults applied (not individually confirmed): the alert is an on-screen banner for signed-in managers (no email or external service); "low" means the number of Available laptops is at or below a threshold; the default threshold is 3; any manager can change the threshold; no alert is shown while the inventory is empty.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Register and view laptops (Priority: P1)
@@ -105,8 +110,32 @@ A manager signs in with an individual account to use the inventory, and can crea
 
 ---
 
+### User Story 6 - Low-inventory alert (Priority: P2)
+
+When the number of Available laptops runs low, every signed-in manager sees an alert so they can order or free up laptops before they run out. Managers can set what "low" means.
+
+**Why this priority**: Running out of laptops that can be handed out is the main operational risk the inventory is meant to prevent.
+
+**Independent Test**: With the default threshold of 3, have 4 Available laptops (no alert), assign one (alert appears stating 3 Available and a threshold of 3), return it (alert disappears), then raise and lower the threshold and see the alert follow.
+
+**Acceptance Scenarios**:
+
+1. **Given** more Available laptops than the threshold, **When** a manager views the inventory, **Then** no alert is shown.
+2. **Given** the Available count equals the threshold, **When** a manager views the inventory, **Then** an alert states the number Available and the threshold.
+3. **Given** the alert is showing, **When** a laptop is returned or added so the count rises above the threshold, **Then** the alert disappears without any manager action.
+4. **Given** the Available count is above the threshold, **When** a laptop is assigned, sent to repair, retired or deleted so the count reaches the threshold, **Then** the alert appears.
+5. **Given** a manager changes the threshold, **When** any manager next views or refreshes the alert, **Then** it reflects the new value, and the value is still set after a restart.
+6. **Given** a threshold that is not a whole number from 0 to 10,000, **When** a manager tries to save it, **Then** it is rejected with a clear message and the old value stays.
+7. **Given** an inventory with no laptops, **When** a manager views it, **Then** no low-inventory alert is shown.
+
+---
+
 ### Edge Cases
 
+- The Available count is exactly equal to the threshold; the alert is shown (at or below).
+- The threshold is 0; the alert is shown only when no laptop is Available and the inventory is not empty.
+- Two managers change the threshold at nearly the same time; the last saved value applies to everyone.
+- A manager has the page open while another manager's change lowers the count; the alert appears for them within 5 seconds without a manual reload.
 - A serial number differs from an existing one only by letter case or surrounding spaces; it is treated as a duplicate.
 - A laptop is assigned and then retired without being returned; the system requires the return to be recorded first.
 - An inventory with no laptops shows an empty state rather than an error.
@@ -133,12 +162,16 @@ A manager signs in with an individual account to use the inventory, and can crea
 - **FR-013**: The system MUST allow searching laptops by brand, model, serial number, or current holder, and filtering by status.
 - **FR-014**: The system MUST show the number of laptops in each status and the total.
 - **FR-015**: The system MUST keep all inventory data saved between uses.
-- **FR-016**: The system MUST NOT include any alerting or notification capability, such as low-stock, warranty, overdue-return, or status-change alerts, whether by email, message, or on-screen push.
+- **FR-016**: The system MUST NOT include any alerting or notification capability other than the low-inventory alert in FR-022 to FR-025. In particular it MUST NOT send warranty, overdue-return, status-change or other alerts, and MUST NOT send any alert by email, text message, push notification or any external service.
 - **FR-017**: The system MUST provide a web page through which managers perform every flow in this specification (add, view, edit, change status, delete, assign, return, search, filter, and view status counts), on top of the standalone inventory library.
 - **FR-018**: The system MUST require each manager to sign in with an individual account before viewing or changing any inventory data, and MUST refuse all inventory access to unauthenticated visitors.
 - **FR-019**: The system MUST record, for every change to an existing laptop (creation, edit, status change, assignment, return), which manager made it and when, and MUST show this change history on the laptop's details.
 - **FR-020**: Every signed-in manager MUST have the same permissions; the system MUST NOT distinguish between roles.
 - **FR-021**: The system MUST allow a signed-in manager to create new manager accounts, MUST NOT offer self-registration, and MUST provide a one-time initial setup step that creates the first manager account when none exists.
+- **FR-022**: The system MUST show every signed-in manager a prominent low-inventory alert whenever the number of Available laptops is at or below the low-inventory threshold and the inventory contains at least one laptop. The alert MUST state the number of Available laptops and the threshold.
+- **FR-023**: The alert MUST appear and disappear automatically as the count changes (for example after an assignment, return, status change, addition or deletion), without the manager having to dismiss it or reload the page.
+- **FR-024**: The low-inventory threshold MUST default to 3 and MUST be a whole number from 0 to 10,000. Any signed-in manager MUST be able to view and change it, and the new value MUST apply to everyone immediately and be kept between uses.
+- **FR-025**: The low-inventory alert MUST be shown only inside the application, to signed-in managers. The system MUST NOT send it outside the application.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -146,6 +179,7 @@ A manager signs in with an individual account to use the inventory, and can crea
 - **Assignment**: A record that a laptop was given to a person. Attributes: laptop, person's name, assignment date, and return date (empty while the laptop is still held). A laptop has many assignments over time but at most one open assignment.
 - **Manager Account**: A person authorized to use the system. Attributes: name and sign-in credentials. Every change is attributed to one manager account.
 - **Change Record**: A log entry of a change to a laptop. Attributes: laptop, what changed, the manager who made it, and when.
+- **Settings**: Organization-wide configuration. Attribute: low-inventory threshold (whole number, 0 to 10,000, default 3).
 
 ## Success Criteria *(mandatory)*
 
@@ -157,7 +191,7 @@ A manager signs in with an individual account to use the inventory, and can crea
 - **SC-004**: 100% of attempts to create a duplicate serial number or assign an unavailable laptop are refused with an explanatory message.
 - **SC-005**: At all times, the per-status counts sum to the total number of laptops, and every laptop has exactly one status.
 - **SC-006**: 90% of first-time users complete the add, assign, and return flows without assistance.
-- **SC-007**: No feature in the system sends any alert or notification.
+- **SC-007**: The low-inventory alert is the only alert or notification in the system. It appears within 5 seconds of the Available count reaching or falling below the threshold, and disappears within 5 seconds of it rising above, with no manager action.
 - **SC-008**: 100% of changes to existing laptops show the responsible manager and time in the laptop's change history, and 100% of attempts to access inventory without signing in are refused.
 
 ## Assumptions
@@ -166,7 +200,9 @@ A manager signs in with an individual account to use the inventory, and can crea
 - The inventory is for a single organization and a single location; multi-site tracking is out of scope.
 - People who receive laptops are identified by name only; integration with an employee directory is out of scope.
 - Only laptops are tracked; accessories, peripherals, and other device types are out of scope.
-- Alerts and notifications of any kind are explicitly excluded, per the request.
+- The only alert in scope is the on-screen low-inventory alert. Other alerts and notifications (warranty, overdue returns, status changes) and any alert sent outside the application (email, text message, push) are out of scope.
+- No alert is shown while the inventory has no laptops at all, so a brand-new system is not flagged as low.
+- Only laptops with status Available count towards the threshold, because assigned, in-repair and retired laptops cannot be handed out.
 - Purchasing, warranty tracking, depreciation, and cost reporting are out of scope for this version.
 - Bulk import and export of inventory data are out of scope for this version.
 - Per the project constitution, the core inventory behavior is delivered as a standalone, independently testable library, with the manager-facing web page added afterwards.

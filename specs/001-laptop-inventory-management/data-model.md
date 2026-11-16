@@ -8,6 +8,16 @@ All values are immutable. Every operation returns a new `State`.
 |-------|------|-------|
 | `laptops` | map of laptop id to Laptop | |
 | `accounts` | map of account id to Account | |
+| `settings` | Settings | Missing in older data files; loaded with the default |
+
+## Settings
+
+| Field | Type | Rules |
+|-------|------|-------|
+| `lowInventoryThreshold` | integer | Whole number from 0 to 10,000; default 3 (FR-024) |
+
+The low-inventory alert is derived, not stored: it is active when the inventory has at least one
+laptop and the number of `Available` laptops is at or below `lowInventoryThreshold` (FR-022).
 
 ## Laptop
 

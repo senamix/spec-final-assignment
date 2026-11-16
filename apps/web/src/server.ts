@@ -15,7 +15,9 @@ import {
   getLaptop,
   hasAccounts,
   listLaptops,
+  lowInventoryAlert,
   returnLaptop,
+  setLowInventoryThreshold,
   statusCounts,
   STATUSES,
   toView,
@@ -174,6 +176,26 @@ const routes: Route[] = [
     method: 'GET',
     pattern: /^\/api\/summary$/,
     handler: (c) => ({ status: 200, body: statusCounts(c.store.read()) }),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/low-inventory-alert$/,
+    handler: (c) => ({ status: 200, body: lowInventoryAlert(c.store.read()) }),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/settings$/,
+    handler: (c) => ({ status: 200, body: c.store.read().settings }),
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/api\/settings$/,
+    async handler(c) {
+      const result = await c.store.update((state) => setLowInventoryThreshold(state, c.body?.lowInventoryThreshold));
+      return result.ok
+        ? { status: 200, body: { lowInventoryThreshold: result.value.threshold } }
+        : errorReply(result.error);
+    },
   },
   {
     method: 'POST',
