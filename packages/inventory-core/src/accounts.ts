@@ -1,10 +1,12 @@
 import { err, ok } from './result.ts';
 import type { Account, Ctx, Hasher, Result, State } from './types.ts';
+import { validateEmail } from './validation.ts';
 
 export interface AccountInput {
   readonly username: string;
   readonly displayName: string;
   readonly password: string;
+  readonly email: string;
 }
 
 const lower = (s: string) => s.trim().toLowerCase();
@@ -33,8 +35,25 @@ export function createAccount(
   if (findByUsername(state, username)) {
     return err('DuplicateUsername', `username ${username} is already in use`, 'username');
   }
-  const account: Account = { id: ctx.newId(), username, displayName, passwordHash: hasher.hash(input.password) };
+  const email = validateEmail(input.email);
+  if (!email.ok) return email;
+  const account: Account = {
+    id: ctx.newId(),
+    username,
+    displayName,
+    passwordHash: hasher.hash(input.password),
+    email: email.value,
+  };
   return ok({ state: { ...state, accounts: { ...state.accounts, [account.id]: account } }, account });
+}
+
+export function setEmail(state: State, accountId: string, email: unknown): Result<{ state: State; account: Account }> {
+  const current = state.accounts[accountId];
+  if (!current) return err('NotFound', `Account ${accountId} was not found`);
+  const valid = validateEmail(email);
+  if (!valid.ok) return valid;
+  const account: Account = { ...current, email: valid.value };
+  return ok({ state: { ...state, accounts: { ...state.accounts, [accountId]: account } }, account });
 }
 
 export function verifyCredentials(

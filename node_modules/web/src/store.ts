@@ -11,7 +11,14 @@ export interface Store {
 async function load(file: string): Promise<State> {
   try {
     const parsed = JSON.parse(await readFile(file, 'utf8')) as Partial<State>;
-    return { laptops: parsed.laptops ?? {}, accounts: parsed.accounts ?? {} };
+    const defaults = emptyState();
+    return {
+      laptops: parsed.laptops ?? {},
+      accounts: parsed.accounts ?? {},
+      alerts: parsed.alerts ?? defaults.alerts,
+      settings: parsed.settings ?? defaults.settings,
+      lowPeriodActive: parsed.lowPeriodActive ?? defaults.lowPeriodActive,
+    };
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return emptyState();
     throw e;

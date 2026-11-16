@@ -18,6 +18,11 @@ th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #e1
 .error { color: #a12626; font-weight: 600; }
 .notice { color: #1a6b3a; font-weight: 600; }
 .badge { padding: 0.1rem 0.5rem; border-radius: 999px; background: #e1e5ec; font-size: 0.85rem; }
+nav .badge { background: #c0392b; color: #fff; }
+.alert-list { list-style: none; padding: 0; display: grid; gap: 0.5rem; }
+.alert-item { background: #fff; padding: 0.6rem 0.9rem; border-radius: 6px; border-left: 4px solid #c0392b; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.alert-item.read { border-left-color: #b9c2d0; }
+.muted { color: #5a6577; font-size: 0.9rem; }
 .summary { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
 .summary div { background: #fff; padding: 0.5rem 1rem; border-radius: 6px; }
 .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.75rem 0; }

@@ -1,0 +1,84 @@
+{
+  "laptops": {
+    "32873239-a38e-40ae-a47a-6db5aa9e13a8": {
+      "id": "32873239-a38e-40ae-a47a-6db5aa9e13a8",
+      "brand": "Dell",
+      "model": "M01",
+      "serialNumber": "DELL-M01-SM",
+      "purchaseDate": "2026-11-05",
+      "specs": {
+        "processor": "I7",
+        "memory": "16Gb",
+        "storage": "250Gb"
+      },
+      "status": "Available",
+      "assignments": [],
+      "history": [
+        {
+          "at": "2026-11-16T14:37:56.848Z",
+          "byAccountId": "d08739bb-f37d-4853-809c-d68976c7e328",
+          "byName": "Manager 04",
+          "action": "Created",
+          "detail": "laptop added"
+        }
+      ]
+    },
+    "8ffe0fc9-ba06-41da-889b-c4df82c38467": {
+      "id": "8ffe0fc9-ba06-41da-889b-c4df82c38467",
+      "brand": "Lenovo",
+      "model": "L01",
+      "serialNumber": "LENOVO-L01-SM",
+      "purchaseDate": "2026-11-02",
+      "specs": {
+        "processor": "i5",
+        "memory": "21Gb",
+        "storage": "512Gb"
+      },
+      "status": "Available",
+      "assignments": [],
+      "history": [
+        {
+          "at": "2026-11-16T14:38:10.460Z",
+          "byAccountId": "d08739bb-f37d-4853-809c-d68976c7e328",
+          "byName": "Manager 04",
+          "action": "Created",
+          "detail": "laptop added"
+        }
+      ]
+    }
+  },
+  "accounts": {
+    "d08739bb-f37d-4853-809c-d68976c7e328": {
+      "id": "d08739bb-f37d-4853-809c-d68976c7e328",
+      "username": "manager04",
+      "displayName": "Manager 04",
+      "passwordHash": "scrypt$bbfbbedd482b5bc86753456875088d1e$3994f80a010389b1ace925ef4682cfdba6dc13df8600fc28a9351f09ab7db5f6cb694b24fc3d460d491bbfc4adbde31ac156939bfed9dda61d745af13f28348b",
+      "email": "test.senamix.f97@gmail.com"
+    }
+  },
+  "alerts": {
+    "465f4816-f179-49b3-ae24-ef2f08cb71e1": {
+      "id": "465f4816-f179-49b3-ae24-ef2f08cb71e1",
+      "raisedAt": "2026-11-16T14:37:56.848Z",
+      "availableCount": 1,
+      "level": 5,
+      "readBy": [],
+      "deliveries": [
+        {
+          "accountId": "d08739bb-f37d-4853-809c-d68976c7e328",
+          "email": "test.senamix.f97@gmail.com",
+          "status": "sent",
+          "attempts": 1,
+          "nextAttemptAt": null,
+          "lastError": null
+        }
+      ]
+    }
+  },
+  "settings": {
+    "lowLevel": 5,
+    "updatedBy": null,
+    "updatedAt": null
+  },
+  "lowPeriodActive": true
+}

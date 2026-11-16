@@ -9,6 +9,10 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "inventory-core": "*"
+    "inventory-core": "*",
+    "nodemailer": "^10.6.0"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^8.0.2"
   }
 }

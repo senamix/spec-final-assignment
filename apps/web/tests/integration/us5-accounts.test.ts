@@ -37,7 +37,7 @@ describe('US5: sign in and manage manager accounts', () => {
     app = await startTestApp();
     await app.setup();
     const bobCookie = await app.addManager('bob');
-    const r = await app.request('POST', '/api/accounts', { username: 'carol', displayName: 'Carol', password: 'password-789' }, bobCookie);
+    const r = await app.request('POST', '/api/accounts', { username: 'carol', displayName: 'Carol', password: 'password-789', email: 'carol@example.com' }, bobCookie);
     expect(r.status).toBe(201);
   });
 
@@ -48,7 +48,7 @@ describe('US5: sign in and manage manager accounts', () => {
       expect((await app.request('POST', path, { username: 'eve', displayName: 'Eve', password: 'password-000' }, null)).status).toBe(401);
       expect((await app.request('POST', path, { username: 'eve', displayName: 'Eve', password: 'password-000' })).status).toBe(404);
     }
-    const unauthenticatedAccounts = await app.request('POST', '/api/accounts', { username: 'eve', displayName: 'Eve', password: 'password-000' }, null);
+    const unauthenticatedAccounts = await app.request('POST', '/api/accounts', { username: 'eve', displayName: 'Eve', password: 'password-000', email: 'eve@example.com' }, null);
     expect(unauthenticatedAccounts.status).toBe(401);
   });
 });

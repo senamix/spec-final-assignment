@@ -9,8 +9,8 @@
 A simple laptop inventory system with sign-in, delivered library-first. A pure, functional
 `inventory-core` library holds all business rules (laptops, assignments, status transitions,
 search, change history, accounts). A thin web application adds a JSON API, a single-page browser
-UI, password sign-in, and file-based persistence. No alerting or notification code exists anywhere
-(FR-016). See [research.md](./research.md) for the decisions behind this approach.
+UI, password sign-in, and file-based persistence. This feature shipped without alerting (FR-016);
+low-inventory alerts were later added by feature 002-low-stock-alerts. See [research.md](./research.md) for the decisions behind this approach.
 
 ## Technical Context
 
@@ -28,7 +28,7 @@ UI, password sign-in, and file-based persistence. No alerting or notification co
 
 **Performance Goals**: Search over 1,000 laptops returns in well under 1 second (supports SC-003); typical page actions feel instant
 
-**Constraints**: Single process and single organization; writes are serialized to avoid lost updates; no alerting or notifications; passwords never stored in plain text
+**Constraints**: Single process and single organization; writes are serialized to avoid lost updates; no alerting or notifications (until feature 002); passwords never stored in plain text
 
 **Scale/Scope**: About 1,000 laptops, fewer than 20 managers, about 5 screens
 

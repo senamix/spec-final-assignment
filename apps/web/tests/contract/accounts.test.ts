@@ -8,7 +8,7 @@ beforeEach(async () => {
 });
 afterEach(async () => { await app.stop(); });
 
-const newManager = { username: 'bob', displayName: 'Bob B', password: 'password-456' };
+const newManager = { username: 'bob', displayName: 'Bob B', password: 'password-456', email: 'bob@example.com' };
 
 describe('POST /api/accounts', () => {
   it('creates a manager (201) without exposing any hash', async () => {

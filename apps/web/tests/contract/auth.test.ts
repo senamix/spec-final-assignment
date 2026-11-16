@@ -5,7 +5,7 @@ let app: TestApp;
 beforeEach(async () => { app = await startTestApp(); });
 afterEach(async () => { await app.stop(); });
 
-const account = { username: 'admin', displayName: 'Admin User', password: 'password-123' };
+const account = { username: 'admin', displayName: 'Admin User', password: 'password-123', email: 'admin@example.com' };
 
 describe('setup', () => {
   it('reports that setup is needed, then not needed', async () => {

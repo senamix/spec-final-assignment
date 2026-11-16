@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -7,8 +7,19 @@ import { createStore } from '../../src/store.ts';
 
 const hasher: Hasher = { hash: (p) => `h:${p}`, verify: (p, h) => h === `h:${p}` };
 const addAccount = (name: string) => (s: ReturnType<typeof emptyState>) =>
-  createAccount(s, { username: name, displayName: name, password: 'password-123' }, hasher, { newId: () => name });
+  createAccount(s, { username: name, displayName: name, password: 'password-123', email: `${name}@example.com` }, hasher, { newId: () => name });
 const tmp = () => mkdtempSync(join(tmpdir(), 'inv-store-'));
+
+describe('file store defaults for older data files', () => {
+  it('fills alert defaults when the file predates alerts', async () => {
+    const file = join(tmp(), 'data.json');
+    writeFileSync(file, JSON.stringify({ laptops: {}, accounts: {} }));
+    const store = await createStore(file);
+    expect(store.read().alerts).toEqual({});
+    expect(store.read().settings).toEqual({ lowLevel: 5, updatedBy: null, updatedAt: null });
+    expect(store.read().lowPeriodActive).toBe(false);
+  });
+});
 
 describe('file store', () => {
   it('starts empty when no file exists', async () => {

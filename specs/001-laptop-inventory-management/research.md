@@ -68,8 +68,8 @@ items remain.
 
 ## 8. Alerts
 
-- **Decision**: No notification code, dependencies or endpoints exist. A contract test asserts that
-  no notification routes exist, and the code review checklist covers it.
+- **Decision**: Superseded by feature 002-low-stock-alerts, which adds low-inventory alerts. The
+  original decision was that no notification code, dependencies or endpoints exist.
 - **Rationale**: FR-016 and SC-007.
 
 ## 9. Frontend

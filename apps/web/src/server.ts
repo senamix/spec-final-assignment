@@ -12,31 +12,48 @@ import {
   deleteLaptop,
   editLaptop,
   err,
+  evaluateLowInventory,
   getLaptop,
+  getLowLevel,
   hasAccounts,
+  listAlerts,
   listLaptops,
+  markAlertRead,
+  ok,
   returnLaptop,
+  setEmail,
+  setLowLevel,
   statusCounts,
   STATUSES,
   toView,
+  unreadCount,
   verifyCredentials,
   type Account,
   type Ctx,
   type DomainError,
   type ErrorCode,
+  type Result,
+  type State,
   type Status,
 } from 'inventory-core';
 import { createRateLimiter, createSessionStore, scryptHasher, type RateLimiter } from './auth.ts';
+import { createDeliveryRunner } from './delivery.ts';
+import { mailerFromEnv, type Mailer } from './mailer.ts';
 import { createStore, type Store } from './store.ts';
 
 export interface ServerOptions {
   dataFile: string;
   port?: number;
   now?: () => Date;
+  mailer?: Mailer;
+  /** How often pending email deliveries are retried; 0 disables the timer. */
+  deliveryIntervalMs?: number;
 }
 
 export interface RunningServer {
   url: string;
+  /** Sends any due email deliveries now and waits for them. */
+  flushDeliveries(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -91,6 +108,10 @@ const rawError = (status: number, code: string, message: string): Reply => ({
 });
 
 const publicAccount = (a: Account) => ({ id: a.id, username: a.username, displayName: a.displayName });
+
+/** Runs inside the same store update as the change, so the alert and the change commit together. */
+const lowChecked = <T extends { state: State }>(c: RouteContext, result: Result<T>): Result<T> =>
+  result.ok ? ok({ ...result.value, state: evaluateLowInventory(result.value.state, c.coreCtx()).state }) : result;
 
 const MAX_BODY_BYTES = 100_000;
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'public');
@@ -148,7 +169,15 @@ const routes: Route[] = [
   {
     method: 'GET',
     pattern: /^\/api\/me$/,
-    handler: (c) => ({ status: 200, body: publicAccount(c.account!) }),
+    handler: (c) => ({ status: 200, body: { ...publicAccount(c.account!), email: c.account!.email ?? null } }),
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/api\/me\/email$/,
+    async handler(c) {
+      const result = await c.store.update((state) => setEmail(state, c.account!.id, c.body?.email));
+      return result.ok ? { status: 200, body: { email: result.value.account.email } } : errorReply(result.error);
+    },
   },
   {
     method: 'POST',
@@ -179,7 +208,7 @@ const routes: Route[] = [
     method: 'POST',
     pattern: /^\/api\/laptops$/,
     async handler(c) {
-      const result = await c.store.update((state) => addLaptop(state, c.body ?? {}, c.coreCtx()));
+      const result = await c.store.update((state) => lowChecked(c, addLaptop(state, c.body ?? {}, c.coreCtx())));
       return result.ok ? { status: 201, body: result.value.laptop } : errorReply(result.error);
     },
   },
@@ -203,7 +232,7 @@ const routes: Route[] = [
     method: 'POST',
     pattern: /^\/api\/laptops\/(?<id>[^/]+)\/status$/,
     async handler(c) {
-      const result = await c.store.update((state) => changeStatus(state, c.params.id!, c.body?.status, c.coreCtx()));
+      const result = await c.store.update((state) => lowChecked(c, changeStatus(state, c.params.id!, c.body?.status, c.coreCtx())));
       return result.ok ? { status: 200, body: toView(result.value.laptop) } : errorReply(result.error);
     },
   },
@@ -211,7 +240,7 @@ const routes: Route[] = [
     method: 'POST',
     pattern: /^\/api\/laptops\/(?<id>[^/]+)\/assign$/,
     async handler(c) {
-      const result = await c.store.update((state) => assignLaptop(state, c.params.id!, c.body?.personName, c.coreCtx()));
+      const result = await c.store.update((state) => lowChecked(c, assignLaptop(state, c.params.id!, c.body?.personName, c.coreCtx())));
       return result.ok ? { status: 200, body: toView(result.value.laptop) } : errorReply(result.error);
     },
   },
@@ -219,7 +248,7 @@ const routes: Route[] = [
     method: 'POST',
     pattern: /^\/api\/laptops\/(?<id>[^/]+)\/return$/,
     async handler(c) {
-      const result = await c.store.update((state) => returnLaptop(state, c.params.id!, c.coreCtx()));
+      const result = await c.store.update((state) => lowChecked(c, returnLaptop(state, c.params.id!, c.coreCtx())));
       return result.ok ? { status: 200, body: toView(result.value.laptop) } : errorReply(result.error);
     },
   },
@@ -227,8 +256,42 @@ const routes: Route[] = [
     method: 'DELETE',
     pattern: /^\/api\/laptops\/(?<id>[^/]+)$/,
     async handler(c) {
-      const result = await c.store.update((state) => deleteLaptop(state, c.params.id!));
+      const result = await c.store.update((state) => lowChecked(c, deleteLaptop(state, c.params.id!)));
       return result.ok ? { status: 204 } : errorReply(result.error);
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/alerts$/,
+    handler(c) {
+      const state = c.store.read();
+      const id = c.account!.id;
+      return { status: 200, body: { unread: unreadCount(state, id), alerts: listAlerts(state, id) } };
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/alerts\/(?<id>[^/]+)\/read$/,
+    async handler(c) {
+      const result = await c.store.update((state) => markAlertRead(state, c.params.id!, c.account!.id));
+      return result.ok ? { status: 204 } : errorReply(result.error);
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/settings\/low-inventory-level$/,
+    handler(c) {
+      const { lowLevel, updatedBy, updatedAt } = getLowLevel(c.store.read());
+      return { status: 200, body: { level: lowLevel, updatedBy, updatedAt } };
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/api\/settings\/low-inventory-level$/,
+    async handler(c) {
+      const result = await c.store.update((state) => setLowLevel(state, c.body?.level, c.coreCtx()));
+      if (!result.ok) return errorReply(result.error);
+      return { status: 200, body: { level: result.value.state.settings.lowLevel, alertRaised: result.value.alert !== null } };
     },
   },
 ];
@@ -236,6 +299,10 @@ const routes: Route[] = [
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
   const now = options.now ?? (() => new Date());
   const store = await createStore(options.dataFile);
+  const mailer = options.mailer ?? mailerFromEnv(process.env, join(dirname(options.dataFile), 'outbox.jsonl'));
+  const runner = createDeliveryRunner({ store, mailer, now });
+  runner.start(options.deliveryIntervalMs ?? 30_000);
+  void runner.run();
   const sessions = createSessionStore();
   const limiter = createRateLimiter({ max: 5, windowMs: 15 * 60 * 1000 });
 
@@ -342,6 +409,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       limiter,
     });
     send(res, reply);
+    if (method !== 'GET' && reply.status < 300) void runner.run();
   };
 
   const server = createServer((req, res) => {
@@ -355,8 +423,10 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const { port } = server.address() as AddressInfo;
   return {
     url: `http://127.0.0.1:${port}`,
+    flushDeliveries: () => runner.run(),
     close: () =>
       new Promise<void>((resolve) => {
+        runner.stop();
         server.closeAllConnections();
         server.close(() => resolve());
       }),

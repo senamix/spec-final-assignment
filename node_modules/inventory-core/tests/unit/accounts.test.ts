@@ -3,7 +3,7 @@ import { createAccount, hasAccounts, verifyCredentials } from '../../src/account
 import { emptyState } from '../../src/types.ts';
 import { fakeHasher, makeCtx } from '../helpers.ts';
 
-const input = { username: 'alice', displayName: 'Alice A', password: 'correct horse' };
+const input = { username: 'alice', displayName: 'Alice A', password: 'correct horse', email: 'alice@example.com' };
 
 describe('accounts', () => {
   it('starts with no accounts', () => {

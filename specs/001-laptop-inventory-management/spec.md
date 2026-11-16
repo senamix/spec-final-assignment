@@ -133,7 +133,7 @@ A manager signs in with an individual account to use the inventory, and can crea
 - **FR-013**: The system MUST allow searching laptops by brand, model, serial number, or current holder, and filtering by status.
 - **FR-014**: The system MUST show the number of laptops in each status and the total.
 - **FR-015**: The system MUST keep all inventory data saved between uses.
-- **FR-016**: The system MUST NOT include any alerting or notification capability, such as low-stock, warranty, overdue-return, or status-change alerts, whether by email, message, or on-screen push.
+- **FR-016**: *(Superseded by feature 002-low-stock-alerts.)* Originally: the system MUST NOT include any alerting or notification capability. Low-inventory alerts are now provided by [002-low-stock-alerts](../002-low-stock-alerts/spec.md); no other kind of alert is in scope.
 - **FR-017**: The system MUST provide a web page through which managers perform every flow in this specification (add, view, edit, change status, delete, assign, return, search, filter, and view status counts), on top of the standalone inventory library.
 - **FR-018**: The system MUST require each manager to sign in with an individual account before viewing or changing any inventory data, and MUST refuse all inventory access to unauthenticated visitors.
 - **FR-019**: The system MUST record, for every change to an existing laptop (creation, edit, status change, assignment, return), which manager made it and when, and MUST show this change history on the laptop's details.
@@ -157,7 +157,7 @@ A manager signs in with an individual account to use the inventory, and can crea
 - **SC-004**: 100% of attempts to create a duplicate serial number or assign an unavailable laptop are refused with an explanatory message.
 - **SC-005**: At all times, the per-status counts sum to the total number of laptops, and every laptop has exactly one status.
 - **SC-006**: 90% of first-time users complete the add, assign, and return flows without assistance.
-- **SC-007**: No feature in the system sends any alert or notification.
+- **SC-007**: *(Superseded by feature 002-low-stock-alerts.)* Only low-inventory alerts exist; no other feature sends an alert or notification.
 - **SC-008**: 100% of changes to existing laptops show the responsible manager and time in the laptop's change history, and 100% of attempts to access inventory without signing in are refused.
 
 ## Assumptions
@@ -166,7 +166,7 @@ A manager signs in with an individual account to use the inventory, and can crea
 - The inventory is for a single organization and a single location; multi-site tracking is out of scope.
 - People who receive laptops are identified by name only; integration with an employee directory is out of scope.
 - Only laptops are tracked; accessories, peripherals, and other device types are out of scope.
-- Alerts and notifications of any kind are explicitly excluded, per the request.
+- Alerts and notifications were excluded from this feature, per the original request. Low-inventory alerts were later added by feature 002-low-stock-alerts.
 - Purchasing, warranty tracking, depreciation, and cost reporting are out of scope for this version.
 - Bulk import and export of inventory data are out of scope for this version.
 - Per the project constitution, the core inventory behavior is delivered as a standalone, independently testable library, with the manager-facing web page added afterwards.

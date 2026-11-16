@@ -58,6 +58,7 @@ function authForm({ title, button, onSubmit, withName }) {
     h('h2', {}, title),
     field('Username', 'username', { required: true, autocomplete: 'username' }),
     withName ? field('Display name', 'displayName', { required: true }) : null,
+    withName ? field('Email', 'email', { type: 'email', required: true, maxlength: 254, autocomplete: 'email' }) : null,
     field('Password', 'password', { type: 'password', required: true, autocomplete: withName ? 'new-password' : 'current-password' }),
     h('button', { type: 'submit' }, button),
     out,
@@ -83,11 +84,94 @@ async function start() {
   }
 }
 
+async function refreshBadge() {
+  const { unread } = await api('GET', '/api/alerts');
+  const badge = document.getElementById('alert-badge');
+  badge.textContent = String(unread);
+  badge.hidden = unread === 0;
+}
+
 async function home() {
   const me = await api('GET', '/api/me');
   who.textContent = `Signed in as ${me.displayName}`;
   nav.hidden = false;
+  await refreshBadge();
+  if (me.email === null) return showAlerts();
   await showLaptops();
+}
+
+document.getElementById('btn-alerts').addEventListener('click', showAlerts);
+
+const fmtTime = (iso) => new Date(iso).toLocaleString();
+const EMAIL_LABELS = { sent: 'Email sent', pending: 'Email pending', failed: 'Email failed', skipped: 'Email not sent (no address)' };
+
+async function showAlerts() {
+  const [me, list, level] = await Promise.all([
+    api('GET', '/api/me'),
+    api('GET', '/api/alerts'),
+    api('GET', '/api/settings/low-inventory-level'),
+  ]);
+  const emailOut = h('div');
+  const levelOut = h('div');
+  const emailForm = h(
+    'form',
+    {
+      onsubmit: async (e) => {
+        e.preventDefault();
+        try {
+          await api('PUT', '/api/me/email', formData(emailForm));
+          await showAlerts();
+        } catch (error) {
+          emailOut.replaceChildren(message(error.message));
+        }
+      },
+    },
+    h('h3', {}, 'Your email address'),
+    me.email === null ? message('Add your email address to receive low-inventory alerts by email.', 'notice') : null,
+    field('Email', 'email', { type: 'email', required: true, maxlength: 254, value: me.email ?? '', autocomplete: 'email' }),
+    h('button', { type: 'submit' }, 'Save email'),
+    emailOut,
+  );
+  const levelForm = h(
+    'form',
+    {
+      onsubmit: async (e) => {
+        e.preventDefault();
+        try {
+          const result = await api('PUT', '/api/settings/low-inventory-level', { level: Number(formData(levelForm).level) });
+          await showAlerts();
+          if (result.alertRaised) document.getElementById('app').prepend(message('Inventory is already low, so an alert was raised.', 'notice'));
+        } catch (error) {
+          levelOut.replaceChildren(message(error.message));
+        }
+      },
+    },
+    h('h3', {}, 'Low-inventory level'),
+    h('p', {}, 'An alert is sent when the number of available laptops is at or below this level.'),
+    field('Level (0 to 100000)', 'level', { type: 'number', required: true, min: 0, max: 100000, step: 1, value: level.level }),
+    h('button', { type: 'submit' }, 'Save level'),
+    levelOut,
+  );
+  const items = list.alerts.map((a) =>
+    h(
+      'li',
+      { class: a.read ? 'alert-item read' : 'alert-item unread' },
+      h('strong', {}, `${a.availableCount} available (level ${a.level})`),
+      ` ${fmtTime(a.raisedAt)} `,
+      a.emailStatus ? h('span', { class: 'muted' }, EMAIL_LABELS[a.emailStatus]) : null,
+      a.read
+        ? h('span', { class: 'muted' }, ' Read')
+        : h('button', { type: 'button', class: 'secondary', onclick: async () => { await api('POST', `/api/alerts/${a.id}/read`); await refreshBadge(); await showAlerts(); } }, 'Mark read'),
+    ),
+  );
+  show(
+    h('h2', {}, 'Low-inventory alerts'),
+    items.length ? h('ul', { class: 'alert-list' }, items) : h('p', {}, 'No alerts yet.'),
+    levelForm,
+    emailForm,
+    h('div', { class: 'row' }, h('button', { type: 'button', class: 'secondary', onclick: showLaptops }, 'Back to laptops')),
+  );
+  await refreshBadge();
 }
 
 document.getElementById('btn-logout').addEventListener('click', async () => {
@@ -116,6 +200,7 @@ function showManagers() {
     h('h2', {}, 'Add manager'),
     field('Username (3 to 50 characters)', 'username', { required: true, minlength: 3, maxlength: 50 }),
     field('Display name', 'displayName', { required: true, maxlength: 100 }),
+    field('Email (receives low-inventory alerts)', 'email', { type: 'email', required: true, maxlength: 254 }),
     field('Password (at least 8 characters)', 'password', { type: 'password', required: true, minlength: 8, autocomplete: 'new-password' }),
     h('div', { class: 'row' }, h('button', { type: 'submit' }, 'Create manager'), h('button', { type: 'button', class: 'secondary', onclick: showLaptops }, 'Back to laptops')),
     out,
@@ -163,6 +248,7 @@ function laptopForm({ title, submitLabel, values = {}, onSubmit, onCancel }) {
 }
 
 async function showLaptops(filters) {
+  refreshBadge().catch(() => {});
   const f = { q: filters?.q ?? '', status: filters?.status ?? '' };
   const params = new URLSearchParams();
   if (f.q) params.set('q', f.q);

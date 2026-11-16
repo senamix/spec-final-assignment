@@ -39,11 +39,43 @@ export interface Account {
   readonly username: string;
   readonly displayName: string;
   readonly passwordHash: string;
+  readonly email?: string;
 }
+
+export interface Settings {
+  readonly lowLevel: number;
+  readonly updatedBy: string | null;
+  readonly updatedAt: string | null;
+}
+
+export type DeliveryStatus = 'pending' | 'sent' | 'failed' | 'skipped';
+
+export interface Delivery {
+  readonly accountId: string;
+  readonly email: string | null;
+  readonly status: DeliveryStatus;
+  readonly attempts: number;
+  readonly nextAttemptAt: string | null;
+  readonly lastError: string | null;
+}
+
+export interface Alert {
+  readonly id: string;
+  readonly raisedAt: string;
+  readonly availableCount: number;
+  readonly level: number;
+  readonly readBy: readonly string[];
+  readonly deliveries: readonly Delivery[];
+}
+
+export const DEFAULT_LOW_LEVEL = 5;
 
 export interface State {
   readonly laptops: Readonly<Record<string, Laptop>>;
   readonly accounts: Readonly<Record<string, Account>>;
+  readonly alerts: Readonly<Record<string, Alert>>;
+  readonly settings: Settings;
+  readonly lowPeriodActive: boolean;
 }
 
 export interface Actor {
@@ -83,6 +115,12 @@ export interface DomainError {
 
 export type Result<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: DomainError };
 
-export const emptyState = (): State => ({ laptops: {}, accounts: {} });
+export const emptyState = (): State => ({
+  laptops: {},
+  accounts: {},
+  alerts: {},
+  settings: { lowLevel: DEFAULT_LOW_LEVEL, updatedBy: null, updatedAt: null },
+  lowPeriodActive: false,
+});
 
 export type LaptopView = Laptop & { readonly currentHolder: string | null };

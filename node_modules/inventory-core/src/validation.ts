@@ -68,3 +68,20 @@ export function validateLaptopInput(input: Record<string, unknown>, now: string)
 }
 
 export const validatePersonName = (value: unknown): Result<string> => validateText('personName', value, 'person name');
+
+const MAX_EMAIL = 254;
+
+export function validateEmail(value: unknown): Result<string> {
+  const text = typeof value === 'string' ? value.trim() : '';
+  const parts = text.split('@');
+  const [local = '', domain = ''] = parts;
+  const valid =
+    text.length > 0 &&
+    text.length <= MAX_EMAIL &&
+    parts.length === 2 &&
+    local.length > 0 &&
+    !/\s/.test(text) &&
+    /^[^.][^\s]*\.[^.\s]+$/.test(domain) &&
+    !domain.includes('..');
+  return valid ? ok(text) : err('ValidationError', 'email must be a valid address such as name@example.com', 'email');
+}

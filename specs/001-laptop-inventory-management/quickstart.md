@@ -43,7 +43,7 @@ Open `http://localhost:3000`, then check each step:
 7. **Search** by brand and filter by status; the summary counts add up to the total (US4).
 8. **Accounts**: create a second manager, sign in as them, edit a laptop and confirm the change history names them (US5).
 9. **Signed out**: after signing out, `GET /api/laptops` returns 401 (FR-018).
-10. **No alerts**: no notification feature or screen exists (FR-016, SC-007).
+10. **No alerts**: originally no notification feature existed (FR-016, SC-007); this is superseded by feature 002-low-stock-alerts.
 
 ## 4. Persistence check
 
